@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Tabla Nutrimental - NOM-051 + COFEPRIS + Amazon</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 5px; font-size: 1.8rem; color: #00d9ff; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 25px; font-size: 0.9rem; }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card h2 { color: #00d9ff; margin-bottom: 15px; font-size: 1.1rem; }
+        
+        .method-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .method-tab {
+            flex: 1; padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px; cursor: pointer;
+            transition: all 0.3s; color: #aaa; text-align: center;
+        }
+        .method-tab:hover { background: rgba(255,255,255,0.1); }
+        .method-tab.active { background: rgba(0, 217, 255, 0.15); border-color: #00d9ff; color: #00d9ff; }
+        .method-tab .icon { font-size: 1.5rem; margin-bottom: 5px; }
+        .method-tab .label { font-weight: bold; }
+        .method-content { display: none; }
+        .method-content.active { display: block; }
+        
+        .upload-zone {
+            border: 2px dashed rgba(0, 217, 255, 0.5);
+            border-radius: 15px; padding: 40px; text-align: center;
+            cursor: pointer; transition: all 0.3s;
+            background: rgba(0, 217, 255, 0.05);
+        }
+        .upload-zone:hover { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
+        .upload-zone.loaded { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); }
+        .upload-icon { font-size: 3rem; margin-bottom: 15px; }
+        .upload-text { color: #aaa; font-size: 1rem; }
+        .upload-text strong { color: #00d9ff; }
+        .file-input { display: none; }
+        .file-name { margin-top: 15px; padding: 10px 15px; background: rgba(0, 255, 136, 0.2); border-radius: 8px; color: #00ff88; font-size: 0.9rem; }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; color: #aaa; font-size: 0.85rem; }
+        input, select {
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff; font-size: 0.95rem;
+        }
+        input:focus, select:focus { outline: none; border-color: #00d9ff; }
+        
+        .nutrientes-grid { display: grid; grid-template-columns: 2fr 1fr 80px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .nutrientes-grid.header { color: #00d9ff; font-weight: bold; font-size: 0.85rem; border-bottom: 2px solid rgba(0,217,255,0.3); }
+        .nutrientes-grid input { padding: 8px; font-size: 0.9rem; }
+        .nutrientes-grid .unidad { color: #888; font-size: 0.85rem; }
+        
+        .ingredientes-preview { max-height: 400px; overflow-y: auto; margin-top: 15px; }
+        .ingredientes-preview table { width: 100%; border-collapse: collapse; }
+        .ingredientes-preview th, .ingredientes-preview td { padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; }
+        .ingredientes-preview th { background: rgba(0, 217, 255, 0.1); color: #00d9ff; position: sticky; top: 0; }
+        .edit-input { width: 80px; padding: 5px 8px; font-size: 0.85rem; }
+        
+        button {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, #00d9ff 0%, #00a8cc 100%);
+            border: none; border-radius: 10px;
+            color: #0f0f23; font-size: 1.1rem; font-weight: bold;
+            cursor: pointer; transition: all 0.3s; margin-top: 15px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 25px rgba(0, 217, 255, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); font-size: 0.9rem; padding: 10px; }
+        .copy-btn { background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%); }
+        
+        .resultados { display: none; }
+        .resultados.visible { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; }
+        th { background: rgba(0, 217, 255, 0.1); color: #00d9ff; }
+        
+        .alert { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        .alert-ok { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .alert-warning { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .alert-danger { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .alert-prohibited { background: rgba(255, 0, 0, 0.3); color: #ff0000; }
+        .alert-info { background: rgba(0, 150, 255, 0.2); color: #00aaff; }
+        
+        .validation-box { margin-top: 20px; padding: 15px; border-radius: 10px; }
+        .validation-ok { background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; }
+        .validation-error { background: rgba(255, 71, 87, 0.1); border: 1px solid #ff4757; }
+        .validation-prohibited { background: rgba(255, 0, 0, 0.15); border: 2px solid #ff0000; }
+        .validation-warning { background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; }
+        .validation-info { background: rgba(0, 150, 255, 0.1); border: 1px solid #00aaff; }
+        .validation-box h3 { margin-bottom: 10px; }
+        .validation-box ul { padding-left: 20px; }
+        .validation-box li { margin-bottom: 5px; font-size: 0.9rem; }
+        
+        .leyendas-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: rgba(138, 43, 226, 0.1); border: 1px solid #8a2be2; }
+        .leyendas-box h3 { color: #8a2be2; margin-bottom: 10px; }
+        .leyenda-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 8px; font-size: 0.9rem; border-left: 3px solid #8a2be2; }
+        
+        .energy-calc { background: rgba(0, 217, 255, 0.1); padding: 15px; border-radius: 10px; margin-top: 15px; }
+        .energy-calc h4 { color: #00d9ff; margin-bottom: 10px; }
+        .energy-formula { font-family: monospace; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; font-size: 0.85rem; color: #aaa; }
+        
+        .status-loading { display: flex; align-items: center; gap: 10px; color: #ffc107; margin-top: 15px; }
+        .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,193,7,0.3); border-top-color: #ffc107; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .section-divider { background: rgba(0, 217, 255, 0.1); color: #00d9ff; font-weight: bold; padding: 8px 10px; }
+        .section-divider.vitaminas { background: rgba(0, 255, 136, 0.1); color: #00ff88; }
+        .section-divider.minerales { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+        .section-divider.activos { background: rgba(255, 107, 107, 0.1); color: #ff6b6b; }
+        
+        .legend-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .legend-box h4 { color: #00d9ff; margin-bottom: 10px; font-size: 0.95rem; }
+        .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+        
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; }
+        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-item label { cursor: pointer; font-size: 0.9rem; }
+        
+        .orden-tabla { font-size: 0.8rem; color: #888; margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 5px; }
+        
+        .tabs-secundarios { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-sec { padding: 8px 15px; background: rgba(255,255,255,0.05); border-radius: 5px; cursor: pointer; font-size: 0.85rem; color: #888; }
+        .tab-sec.active { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
+        .tab-sec-content { display: none; }
+        .tab-sec-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Calculadora de Tabla Nutrimental</h1>
+        <p class="subtitle">NOM-051 + COFEPRIS + Amazon México | Validación Completa</p>
+        
+        <div class="legend-box">
+            <h4>🚦 Estados de Validación:</h4>
+            <div class="legend-grid">
+                <div class="legend-item"><span class="alert alert-ok">✓ OK</span> Dentro de límites</div>
+                <div class="legend-item"><span class="alert alert-warning">⚠️ Advertencia</span> Requiere leyenda</div>
+                <div class="legend-item"><span class="alert alert-danger">❌ Excede</span> Supera límite Amazon</div>
+                <div class="legend-item"><span class="alert alert-prohibited">🚫 PROHIBIDO</span> No permitido COFEPRIS</div>
+                <div class="legend-item"><span class="alert alert-info">📋 Leyenda</span> Requiere declaración</div>
+            </div>
+        </div>
+        
+        <!-- Selector de método -->
+        <div class="card">
+            <h2>📥 Método de Entrada</h2>
+            <div class="method-tabs">
+                <div class="method-tab active" onclick="switchMethod('upload')">
+                    <div class="icon">📄</div>
+                    <div class="label">Subir Archivo Word</div>
+                </div>
+                <div class="method-tab" onclick="switchMethod('manual')">
+                    <div class="icon">✏️</div>
+                    <div class="label">Captura Manual</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MÉTODO UPLOAD -->
+        <div id="method-upload" class="method-content active">
+            <div class="card">
+                <h2>📁 Cargar Marbete</h2>
+                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text"><strong>Clic aquí</strong> o arrastra tu archivo Word</div>
+                    <input type="file" id="fileInput" class="file-input" accept=".doc,.docx">
+                </div>
+                <div id="fileStatus"></div>
+            </div>
+            
+            <div class="card" id="uploadConfigCard" style="display: none;">
+                <h2>⚙️ Configuración</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tamaño de porción (g)</label>
+                        <input type="number" id="porcionUpload" value="10" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Porciones por envase</label>
+                        <input type="number" id="porcionesUpload" value="50">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" id="previewCard" style="display: none;">
+                <h2>📋 Datos Extraídos</h2>
+                <div class="ingredientes-preview" id="ingredientesPreview"></div>
+            </div>
+            
+            <button id="calcularBtnUpload" onclick="calcularDesdeArchivo()" style="display: none;">⚡ Calcular y Validar</button>
+        </div>
+        
+        <!-- MÉTODO MANUAL -->
+        <div id="method-manual" class="method-content">
+            <div class="card">
+                <h2>⚙️ Configuración</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tamaño de porción (g)</label>
+                        <input type="number" id="porcion" value="10" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Porciones por envase</label>
+                        <input type="number" id="porciones" value="50">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🥩 Información Nutrimental (por porción)</h2>
+                <p class="orden-tabla">📌 Orden NOM-051: Contenido energético → Proteínas → Grasas (saturadas) → Carbohidratos (azúcares) → Fibra → Sodio</p>
+                
+                <div class="nutrientes-grid header"><span>Nutriente</span><span>Cantidad</span><span>Unidad</span></div>
+                <div class="nutrientes-grid"><span>Proteínas</span><input type="number" id="proteina" step="0.01"><span class="unidad">g</span></div>
+                <div class="nutrientes-grid"><span>Grasas totales (Lípidos)</span><input type="number" id="grasaTotal" step="0.01"><span class="unidad">g</span></div>
+                <div class="nutrientes-grid"><span>— de las cuales: Grasa saturada</span><input type="number" id="grasaSat" step="0.01"><span class="unidad">g</span></div>
+                <div class="nutrientes-grid"><span>Carbohidratos (Hidratos de carbono)</span><input type="number" id="carbohidratos" step="0.01"><span class="unidad">g</span></div>
+                <div class="nutrientes-grid"><span>— de los cuales: Azúcares</span><input type="number" id="azucar" step="0.01"><span class="unidad">g</span></div>
+                <div class="nutrientes-grid"><span>Fibra dietética</span><input type="number" id="fibra" step="0.01"><span class="unidad">g</span></div>
+                <div class="nutrientes-grid"><span>Sodio</span><input type="number" id="sodio" step="0.1"><span class="unidad">mg ⚠️</span></div>
+            </div>
+            
+            <div class="card">
+                <h2>💊 Vitaminas (por porción)</h2>
+                <div class="nutrientes-grid header"><span>Vitamina</span><span>Cantidad</span><span>Unidad / Límite Amazon</span></div>
+                <div class="nutrientes-grid"><span>Vitamina A</span><input type="number" id="vitA" step="0.1"><span class="unidad">mcg (máx 1000)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina C</span><input type="number" id="vitC" step="0.1"><span class="unidad">mg (máx 300)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina D</span><input type="number" id="vitD" step="0.1"><span class="unidad">mcg (máx 10)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina E</span><input type="number" id="vitE" step="0.1"><span class="unidad">mg (máx 200)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina K</span><input type="number" id="vitK" step="0.1"><span class="unidad">mcg (máx 30)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B1 (Tiamina)</span><input type="number" id="vitB1" step="0.1"><span class="unidad">mg (máx 15)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B2 (Riboflavina)</span><input type="number" id="vitB2" step="0.1"><span class="unidad">mg (máx 18)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B3 (Niacina)</span><input type="number" id="vitB3" step="0.1"><span class="unidad">mg (máx 25)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B5 (Ác. Pantoténico)</span><input type="number" id="vitB5" step="0.1"><span class="unidad">mg (máx 20)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B6 (Piridoxina)</span><input type="number" id="vitB6" step="0.1"><span class="unidad">mg (máx 10)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B7 (Biotina)</span><input type="number" id="biotina" step="0.1"><span class="unidad">mcg (máx 300)</span></div>
+                <div class="nutrientes-grid"><span>Vitamina B12</span><input type="number" id="vitB12" step="0.1"><span class="unidad">mcg (máx 12)</span></div>
+                <div class="nutrientes-grid"><span>Ácido Fólico</span><input type="number" id="folico" step="0.1"><span class="unidad">mcg (máx 400)</span></div>
+            </div>
+            
+            <div class="card">
+                <h2>⚗️ Minerales (por porción)</h2>
+                <div class="nutrientes-grid header"><span>Mineral</span><span>Cantidad</span><span>Unidad / Límite Amazon</span></div>
+                <div class="nutrientes-grid"><span>Calcio</span><input type="number" id="calcio" step="0.1"><span class="unidad">mg (máx 1200)</span></div>
+                <div class="nutrientes-grid"><span>Hierro</span><input type="number" id="hierro" step="0.1"><span class="unidad">mg (máx 20)</span></div>
+                <div class="nutrientes-grid"><span>Zinc</span><input type="number" id="zinc" step="0.1"><span class="unidad">mg (máx 20)</span></div>
+                <div class="nutrientes-grid"><span>Cobre</span><input type="number" id="cobre" step="0.1"><span class="unidad">mg (máx 3)</span></div>
+                <div class="nutrientes-grid"><span>Magnesio</span><input type="number" id="magnesio" step="0.1"><span class="unidad">mg (máx 500)</span></div>
+                <div class="nutrientes-grid"><span>Fósforo</span><input type="number" id="fosforo" step="0.1"><span class="unidad">mg (máx 1200)</span></div>
+                <div class="nutrientes-grid"><span>Selenio</span><input type="number" id="selenio" step="0.1"><span class="unidad">mcg (máx 100)</span></div>
+                <div class="nutrientes-grid"><span>Yodo</span><input type="number" id="yodo" step="0.1"><span class="unidad">mcg (máx 200)</span></div>
+                <div class="nutrientes-grid"><span>Cromo</span><input type="number" id="cromo" step="0.1"><span class="unidad">mcg (máx 200)</span></div>
+                <div class="nutrientes-grid"><span>Manganeso</span><input type="number" id="manganeso" step="0.1"><span class="unidad">mg (máx 7.5)</span></div>
+            </div>
+            
+            <div class="card">
+                <h2>🧬 Ingredientes Activos / Botánicos</h2>
+                <div id="ingredientesActivos">
+                    <div class="nutrientes-grid header"><span>Ingrediente</span><span>Cantidad</span><span>Unidad</span></div>
+                </div>
+                <button type="button" class="btn-secondary" onclick="agregarIngrediente()">+ Agregar Ingrediente</button>
+            </div>
+            
+            <div class="card">
+                <h2>⚠️ Alérgenos (NOM-051)</h2>
+                <p style="color:#888; font-size:0.85rem; margin-bottom:15px;">Marca los alérgenos presentes en el producto. Genera automáticamente la leyenda "Contiene:"</p>
+                <div class="checkbox-group">
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoLeche"><label for="alergenoLeche">🥛 Leche y lácteos</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoHuevo"><label for="alergenoHuevo">🥚 Huevo</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoPescado"><label for="alergenoPescado">🐟 Pescado</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoCrustaceos"><label for="alergenoCrustaceos">🦐 Crustáceos</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoMoluscos"><label for="alergenoMoluscos">🦪 Moluscos</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoSoya"><label for="alergenoSoya">🫘 Soya</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoTrigo"><label for="alergenoTrigo">🌾 Trigo/Gluten</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoCacahuate"><label for="alergenoCacahuate">🥜 Cacahuate</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoNueces"><label for="alergenoNueces">🌰 Nueces de árbol</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="alergenoSulfitos"><label for="alergenoSulfitos">⚗️ Sulfitos (≥10mg/kg)</label></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🍬 Edulcorantes</h2>
+                <p style="color:#888; font-size:0.85rem; margin-bottom:15px;">Marca los edulcorantes usados. Genera leyendas obligatorias.</p>
+                <div class="checkbox-group">
+                    <div class="checkbox-item"><input type="checkbox" id="edulStevia"><label for="edulStevia">Stevia (glucósidos de esteviol)</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="edulSucralosa"><label for="edulSucralosa">Sucralosa</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="edulAspartame"><label for="edulAspartame">Aspartame</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="edulAcesulfame"><label for="edulAcesulfame">Acesulfame K</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="edulSacarina"><label for="edulSacarina">Sacarina</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="edulPolialcoholes"><label for="edulPolialcoholes">Polialcoholes (sorbitol, maltitol, etc.)</label></div>
+                </div>
+            </div>
+            
+            <button onclick="calcularManual()">⚡ Calcular y Validar</button>
+        </div>
+        
+        <!-- RESULTADOS -->
+        <div class="card resultados" id="resultados">
+            <h2>📋 Tabla Nutrimental NOM-051</h2>
+            
+            <div class="energy-calc">
+                <h4>🔥 Cálculo de Energía (Atwater NOM-051)</h4>
+                <div class="energy-formula" id="energyFormula"></div>
+            </div>
+            
+            <table id="tablaResultados">
+                <thead>
+                    <tr>
+                        <th>Nutriente</th>
+                        <th>Por Porción</th>
+                        <th>Por 100 g</th>
+                        <th>% VNR</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyResultados"></tbody>
+            </table>
+            
+            <div id="validacionesProhibidos"></div>
+            <div id="validacionesLimites"></div>
+            <div id="validacionesOrden"></div>
+            <div id="leyendasRequeridas"></div>
+            
+            <button class="copy-btn" onclick="copiarTabla()">📋 Copiar Tabla</button>
+        </div>
+    </div>
+    
+    <script>
+        // ==================== BASES DE DATOS ====================
+        
+        // Límites Amazon Tabla A
+        const limitesAmazon = {
+            'vitamina a': { limite: 1000, unidad: 'mcg', vnr: 568 },
+            'retinol': { limite: 1000, unidad: 'mcg', vnr: 568 },
+            'ácido fólico': { limite: 400, unidad: 'mcg', vnr: 380 },
+            'acido folico': { limite: 400, unidad: 'mcg', vnr: 380 },
+            'beta caroteno': { limite: 15000, unidad: 'mcg', vnr: null },
+            'biotina': { limite: 300, unidad: 'mcg', vnr: 30 },
+            'vitamina b7': { limite: 300, unidad: 'mcg', vnr: 30 },
+            'vitamina b1': { limite: 15, unidad: 'mg', vnr: 0.8 },
+            'tiamina': { limite: 15, unidad: 'mg', vnr: 0.8 },
+            'vitamina b2': { limite: 18, unidad: 'mg', vnr: 0.84 },
+            'riboflavina': { limite: 18, unidad: 'mg', vnr: 0.84 },
+            'vitamina b3': { limite: 25, unidad: 'mg', vnr: 11 },
+            'niacina': { limite: 25, unidad: 'mg', vnr: 11 },
+            'vitamina b5': { limite: 20, unidad: 'mg', vnr: 4 },
+            'ácido pantoténico': { limite: 20, unidad: 'mg', vnr: 4 },
+            'vitamina b6': { limite: 10, unidad: 'mg', vnr: 0.93 },
+            'piridoxina': { limite: 10, unidad: 'mg', vnr: 0.93 },
+            'vitamina b12': { limite: 12, unidad: 'mcg', vnr: 2.1 },
+            'cianocobalamina': { limite: 12, unidad: 'mcg', vnr: 2.1 },
+            'vitamina c': { limite: 300, unidad: 'mg', vnr: 60 },
+            'ácido ascórbico': { limite: 300, unidad: 'mg', vnr: 60 },
+            'vitamina d': { limite: 10, unidad: 'mcg', vnr: 5.6 },
+            'colecalciferol': { limite: 10, unidad: 'mcg', vnr: 5.6 },
+            'vitamina e': { limite: 200, unidad: 'mg', vnr: 11 },
+            'tocoferol': { limite: 200, unidad: 'mg', vnr: 11 },
+            'vitamina k': { limite: 30, unidad: 'mcg', vnr: 78 },
+            'calcio': { limite: 1200, unidad: 'mg', vnr: 900 },
+            'cobre': { limite: 3, unidad: 'mg', vnr: 0.65 },
+            'cromo': { limite: 200, unidad: 'mcg', vnr: 22 },
+            'fósforo': { limite: 1200, unidad: 'mg', vnr: 664 },
+            'fosforo': { limite: 1200, unidad: 'mg', vnr: 664 },
+            'hierro': { limite: 20, unidad: 'mg', vnr: 17 },
+            'magnesio': { limite: 500, unidad: 'mg', vnr: 248 },
+            'manganeso': { limite: 7.5, unidad: 'mg', vnr: 2 },
+            'molibdeno': { limite: 250, unidad: 'mcg', vnr: 75 },
+            'selenio': { limite: 100, unidad: 'mcg', vnr: 41 },
+            'yodo': { limite: 200, unidad: 'mcg', vnr: 99 },
+            'zinc': { limite: 20, unidad: 'mg', vnr: 10 }
+        };
+        
+        // VNR NOM-051 para macros
+        const vnrMacros = {
+            'proteínas': { vnr: 50, unidad: 'g' },
+            'proteinas': { vnr: 50, unidad: 'g' },
+            'fibra': { vnr: 30, unidad: 'g' },
+            'fibra dietética': { vnr: 30, unidad: 'g' }
+        };
+        
+        // Plantas PROHIBIDAS (COFEPRIS + Amazon Tabla B)
+        const plantasProhibidas = [
+            'acacia', 'acónito', 'aconito', 'cálamo', 'calamo', 'castaño de indias',
+            'cáñamo de canadá', 'apocino', 'árnica', 'arnica', 'ajenjo',
+            'artemisa', 'belladona', 'agracejo', 'nueza', 'alcanfor',
+            'colquico', 'cicuta', 'lirio de los valles', 'convalaria',
+            'croton', 'retama negra', 'celidonia', 'epazote', 'pazote',
+            'matricaria', 'laureol', 'mezereon', 'torvisco', 'daphne',
+            'estramonio', 'higuera loca', 'toloache', 'datura',
+            'digital', 'digitalis', 'haba tonga', 'sarrapia',
+            'evónimo', 'evonimo', 'euphorbia', 'caracias', 'tartago',
+            'jalapa', 'gelsemio', 'madreselva', 'yohimbe', 'yohimbina',
+            'poleo americano', 'hedeoma', 'heliotropo', 'verrucaria',
+            'beleño negro', 'hipérico', 'hiperico', 'hypericum',
+            'anís estrella', 'anis estrella', 'illicium',
+            'gloria de la mañana', 'ipomoea purpurea',
+            'sabina', 'lantana', 'orozus', 'cinco negritos',
+            'gobernadora', 'larrea', 'lobelia',
+            'mandrágora', 'mandragora', 'poleo', 'mentha pulegium',
+            'narciso', 'muérdago', 'muerdago', 'mistlatos', 'viscum',
+            'haba de calabar', 'hierba carmín', 'hierba carmin',
+            'podófilo', 'podofilo', 'rauwolfia', 'ricino',
+            'sanguinaria', 'retama de escobas', 'sasafrás', 'sasafras',
+            'senecio', 'hierba de santiago', 'dulcamara',
+            'kombé', 'kombe', 'estrofanto', 'nuez vómica', 'nuez vomica', 'strychnos',
+            'consuelda', 'symphytum', 'tanaceto', 'tanacetum vulgare',
+            'tuya', 'thuja', 'árbol de la vida', 'farfara', 'tussilago',
+            'eléboro blanco', 'eleboro blanco', 'veratum',
+            'vincapervinaca', 'vinca minor',
+            'withania somnifera', 'ashwagandha', 'orovale',
+            // Amazon adicionales
+            'aloe vera', 'aloe barbadensis', 'boldo', 'peumus boldus',
+            'kava', 'piper methysticum', 'valeriana',
+            'damiana', 'turnera', 'ortiga', 'urtica',
+            'fenogreco', 'trigonella', 'jengibre', 'zingiber',
+            'regaliz', 'glycyrrhiza', 'lúpulo', 'lupulo', 'humulus',
+            'garra del diablo', 'harpagophytum', 'manzanilla', 'matricaria chamomilla',
+            'melisa', 'toronjil', 'melissa', 'romero', 'rosmarinus',
+            'tomillo', 'thymus', 'diente de león', 'diente de leon', 'taraxacum',
+            'adelfa', 'nerium', 'echinacea'
+        ];
+        
+        // Plantas con leyenda de embarazo (Tabla C)
+        const plantasEmbarazo = [
+            'gayuba', 'arctostaphylos', 'uva-ursi',
+            'caulófilo', 'caulofilo', 'caulophyllum',
+            'cimicífuga', 'cimicifuga', 'raíz de culebra negra',
+            'hidrastis', 'hydrastis', 'raíz de canadá',
+            'hierba dulce', 'lippia dulcis',
+            'zoapatle', 'montanoa',
+            'perejil', 'petroselinum',
+            'ruda', 'ruta graveolens',
+            'salvia', 'salvia officinalis'
+        ];
+        
+        // Unidades correctas NOM-051
+        const unidadesNOM051 = {
+            'contenido energético': 'kJ (kcal)',
+            'proteínas': 'g',
+            'proteinas': 'g',
+            'grasas': 'g',
+            'grasas totales': 'g',
+            'grasa saturada': 'g',
+            'grasas saturadas': 'g',
+            'carbohidratos': 'g',
+            'hidratos de carbono': 'g',
+            'azúcares': 'g',
+            'azucares': 'g',
+            'fibra': 'g',
+            'fibra dietética': 'g',
+            'sodio': 'mg'
+        };
+        
+        let datosExtraidos = [];
+        let ingredientesCount = 0;
+        
+        // ==================== FUNCIONES ====================
+        
+        function switchMethod(method) {
+            document.querySelectorAll('.method-tab').forEach(t => t.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.method-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`method-${method}`).classList.add('active');
+            document.getElementById('resultados').classList.remove('visible');
+        }
+        
+        // Upload handlers
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', e => { if(e.target.files[0]) processFile(e.target.files[0]); });
+        
+        function processFile(file) {
+            if (!file.name.match(/\.(doc|docx)$/i)) { alert('Solo archivos Word'); return; }
+            document.getElementById('fileStatus').innerHTML = '<div class="status-loading"><div class="spinner"></div>Procesando...</div>';
+            const reader = new FileReader();
+            reader.onload = e => {
+                mammoth.extractRawText({ arrayBuffer: e.target.result })
+                    .then(r => parseTable(r.value, file.name))
+                    .catch(() => document.getElementById('fileStatus').innerHTML = '<div class="file-name" style="background:rgba(255,71,87,0.2);color:#ff4757;">❌ Error al procesar</div>');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function parseTable(text, fileName) {
+            datosExtraidos = [];
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            
+            for (let line of lines) {
+                const porcionMatch = line.match(/porción[:\s]+.*?(\d+(?:\.\d+)?)\s*g/i);
+                if (porcionMatch) document.getElementById('porcionUpload').value = parseFloat(porcionMatch[1]);
+                
+                const nutrientMatch = line.match(/^([A-Za-zÁÉÍÓÚáéíóúñÑ\s\(\)\-\+,]+?)\s+([\d,.]+)\s*(mg|g|mcg|µg|kcal|kJ)?/i);
+                if (nutrientMatch) {
+                    let nombre = nutrientMatch[1].trim().replace(/[:]+$/, '');
+                    let valor = parseFloat(nutrientMatch[2].replace(',', '.'));
+                    let unidad = (nutrientMatch[3] || 'g').toLowerCase().replace('µg', 'mcg');
+                    
+                    const ignorar = ['información', 'nutrimental', 'tamaño', 'porción', 'porciones', 'envase', 'por', '100', 'contenido energético'];
+                    if (ignorar.some(i => nombre.toLowerCase().includes(i) && nombre.length < 25)) continue;
+                    if (isNaN(valor)) continue;
+                    
+                    let tipo = detectarTipo(nombre);
+                    if (!datosExtraidos.some(d => d.nombre.toLowerCase() === nombre.toLowerCase()) && nombre.length > 2) {
+                        datosExtraidos.push({ nombre, valor, unidad, tipo });
+                    }
+                }
+            }
+            
+            if (datosExtraidos.length > 0) {
+                uploadZone.classList.add('loaded');
+                document.getElementById('fileStatus').innerHTML = `<div class="file-name">✅ ${fileName} - ${datosExtraidos.length} items</div>`;
+                mostrarPreview();
+                document.getElementById('uploadConfigCard').style.display = 'block';
+                document.getElementById('previewCard').style.display = 'block';
+                document.getElementById('calcularBtnUpload').style.display = 'block';
+            }
+        }
+        
+        function detectarTipo(nombre) {
+            const n = nombre.toLowerCase();
+            if (n.includes('vitamina') || n.includes('biotina') || n.includes('folico') || n.includes('fólico') || n.includes('tiamina') || n.includes('riboflavina') || n.includes('niacina') || n.includes('piridoxina') || n.includes('cobalamina') || n.includes('tocoferol') || n.includes('retinol')) return 'vitamina';
+            if (['zinc', 'cobre', 'hierro', 'calcio', 'magnesio', 'fósforo', 'fosforo', 'selenio', 'yodo', 'cromo', 'manganeso', 'potasio'].some(m => n.includes(m))) return 'mineral';
+            if (['proteína', 'proteina', 'carbohidrato', 'grasa', 'fibra', 'sodio', 'azúcar', 'azucar', 'lípido', 'lipido'].some(m => n.includes(m))) return 'macro';
+            return 'activo';
+        }
+        
+        function mostrarPreview() {
+            let html = '<table><thead><tr><th>Ingrediente</th><th>Valor</th><th>Unidad</th><th>Alerta</th></tr></thead><tbody>';
+            datosExtraidos.forEach((item, idx) => {
+                let alerta = validarIngrediente(item.nombre, item.valor);
+                html += `<tr>
+                    <td>${item.nombre}</td>
+                    <td><input type="number" class="edit-input" id="val_${idx}" value="${item.valor}" step="0.01"></td>
+                    <td><select id="uni_${idx}" class="edit-input"><option ${item.unidad==='g'?'selected':''}>g</option><option ${item.unidad==='mg'?'selected':''}>mg</option><option ${item.unidad==='mcg'?'selected':''}>mcg</option></select></td>
+                    <td>${alerta}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('ingredientesPreview').innerHTML = html;
+        }
+        
+        function validarIngrediente(nombre, valor) {
+            const n = nombre.toLowerCase();
+            
+            // Prohibido
+            if (plantasProhibidas.some(p => n.includes(p))) {
+                return '<span class="alert alert-prohibited">🚫 PROHIBIDO</span>';
+            }
+            
+            // Embarazo
+            if (plantasEmbarazo.some(p => n.includes(p))) {
+                return '<span class="alert alert-warning">⚠️ Leyenda embarazo</span>';
+            }
+            
+            // Límite Amazon
+            for (let key in limitesAmazon) {
+                if (n.includes(key)) {
+                    if (valor > limitesAmazon[key].limite) {
+                        return `<span class="alert alert-danger">❌ Excede ${limitesAmazon[key].limite}</span>`;
+                    }
+                }
+            }
+            
+            return '<span class="alert alert-ok">✓</span>';
+        }
+        
+        function agregarIngrediente() {
+            ingredientesCount++;
+            const container = document.getElementById('ingredientesActivos');
+            const div = document.createElement('div');
+            div.className = 'nutrientes-grid';
+            div.innerHTML = `
+                <input type="text" id="ingNom${ingredientesCount}" placeholder="Ej: Colágeno tipo I">
+                <input type="number" id="ingVal${ingredientesCount}" step="0.1" placeholder="1000">
+                <select id="ingUni${ingredientesCount}"><option value="mg">mg</option><option value="g">g</option><option value="mcg">mcg</option></select>
+            `;
+            container.appendChild(div);
+        }
+        
+        // Agregar 3 campos por defecto
+        window.onload = () => { for(let i=0;i<3;i++) agregarIngrediente(); };
+        
+        function calcularDesdeArchivo() {
+            datosExtraidos.forEach((item, idx) => {
+                item.valor = parseFloat(document.getElementById(`val_${idx}`)?.value) || item.valor;
+                item.unidad = document.getElementById(`uni_${idx}`)?.value || item.unidad;
+            });
+            const porcion = parseFloat(document.getElementById('porcionUpload').value) || 10;
+            generarResultados(datosExtraidos, porcion, {}, {});
+        }
+        
+        function calcularManual() {
+            const porcion = parseFloat(document.getElementById('porcion').value) || 10;
+            const datos = [];
+            
+            // Macros en orden NOM-051
+            const macros = [
+                { id: 'proteina', nombre: 'Proteínas', unidad: 'g' },
+                { id: 'grasaTotal', nombre: 'Grasas totales (Lípidos)', unidad: 'g' },
+                { id: 'grasaSat', nombre: '  de las cuales: Grasa saturada', unidad: 'g', sub: true },
+                { id: 'carbohidratos', nombre: 'Carbohidratos (Hidratos de carbono)', unidad: 'g' },
+                { id: 'azucar', nombre: '  de los cuales: Azúcares', unidad: 'g', sub: true },
+                { id: 'fibra', nombre: 'Fibra dietética', unidad: 'g' },
+                { id: 'sodio', nombre: 'Sodio', unidad: 'mg' }
+            ];
+            
+            macros.forEach(m => {
+                const val = parseFloat(document.getElementById(m.id)?.value) || 0;
+                datos.push({ nombre: m.nombre, valor: val, unidad: m.unidad, tipo: 'macro', sub: m.sub });
+            });
+            
+            // Vitaminas
+            const vitaminas = [
+                { id: 'vitA', nombre: 'Vitamina A', unidad: 'mcg' },
+                { id: 'vitC', nombre: 'Vitamina C', unidad: 'mg' },
+                { id: 'vitD', nombre: 'Vitamina D', unidad: 'mcg' },
+                { id: 'vitE', nombre: 'Vitamina E', unidad: 'mg' },
+                { id: 'vitK', nombre: 'Vitamina K', unidad: 'mcg' },
+                { id: 'vitB1', nombre: 'Vitamina B1 (Tiamina)', unidad: 'mg' },
+                { id: 'vitB2', nombre: 'Vitamina B2 (Riboflavina)', unidad: 'mg' },
+                { id: 'vitB3', nombre: 'Vitamina B3 (Niacina)', unidad: 'mg' },
+                { id: 'vitB5', nombre: 'Vitamina B5 (Ác. Pantoténico)', unidad: 'mg' },
+                { id: 'vitB6', nombre: 'Vitamina B6 (Piridoxina)', unidad: 'mg' },
+                { id: 'biotina', nombre: 'Vitamina B7 (Biotina)', unidad: 'mcg' },
+                { id: 'vitB12', nombre: 'Vitamina B12', unidad: 'mcg' },
+                { id: 'folico', nombre: 'Ácido Fólico', unidad: 'mcg' }
+            ];
+            
+            vitaminas.forEach(v => {
+                const val = parseFloat(document.getElementById(v.id)?.value) || 0;
+                if (val > 0) datos.push({ nombre: v.nombre, valor: val, unidad: v.unidad, tipo: 'vitamina' });
+            });
+            
+            // Minerales
+            const minerales = [
+                { id: 'calcio', nombre: 'Calcio', unidad: 'mg' },
+                { id: 'hierro', nombre: 'Hierro', unidad: 'mg' },
+                { id: 'zinc', nombre: 'Zinc', unidad: 'mg' },
+                { id: 'cobre', nombre: 'Cobre', unidad: 'mg' },
+                { id: 'magnesio', nombre: 'Magnesio', unidad: 'mg' },
+                { id: 'fosforo', nombre: 'Fósforo', unidad: 'mg' },
+                { id: 'selenio', nombre: 'Selenio', unidad: 'mcg' },
+                { id: 'yodo', nombre: 'Yodo', unidad: 'mcg' },
+                { id: 'cromo', nombre: 'Cromo', unidad: 'mcg' },
+                { id: 'manganeso', nombre: 'Manganeso', unidad: 'mg' }
+            ];
+            
+            minerales.forEach(m => {
+                const val = parseFloat(document.getElementById(m.id)?.value) || 0;
+                if (val > 0) datos.push({ nombre: m.nombre, valor: val, unidad: m.unidad, tipo: 'mineral' });
+            });
+            
+            // Ingredientes activos
+            for (let i = 1; i <= ingredientesCount; i++) {
+                const nom = document.getElementById(`ingNom${i}`)?.value || '';
+                const val = parseFloat(document.getElementById(`ingVal${i}`)?.value) || 0;
+                const uni = document.getElementById(`ingUni${i}`)?.value || 'mg';
+                if (nom && val > 0) datos.push({ nombre: nom, valor: val, unidad: uni, tipo: 'activo' });
+            }
+            
+            // Alérgenos
+            const alergenos = {};
+            alergenos.leche = document.getElementById('alergenoLeche')?.checked;
+            alergenos.huevo = document.getElementById('alergenoHuevo')?.checked;
+            alergenos.pescado = document.getElementById('alergenoPescado')?.checked;
+            alergenos.crustaceos = document.getElementById('alergenoCrustaceos')?.checked;
+            alergenos.moluscos = document.getElementById('alergenoMoluscos')?.checked;
+            alergenos.soya = document.getElementById('alergenoSoya')?.checked;
+            alergenos.trigo = document.getElementById('alergenoTrigo')?.checked;
+            alergenos.cacahuate = document.getElementById('alergenoCacahuate')?.checked;
+            alergenos.nueces = document.getElementById('alergenoNueces')?.checked;
+            alergenos.sulfitos = document.getElementById('alergenoSulfitos')?.checked;
+            
+            // Edulcorantes
+            const edulcorantes = {};
+            edulcorantes.stevia = document.getElementById('edulStevia')?.checked;
+            edulcorantes.sucralosa = document.getElementById('edulSucralosa')?.checked;
+            edulcorantes.aspartame = document.getElementById('edulAspartame')?.checked;
+            edulcorantes.acesulfame = document.getElementById('edulAcesulfame')?.checked;
+            edulcorantes.sacarina = document.getElementById('edulSacarina')?.checked;
+            edulcorantes.polialcoholes = document.getElementById('edulPolialcoholes')?.checked;
+            
+            generarResultados(datos, porcion, alergenos, edulcorantes);
+        }
+        
+        function generarResultados(datos, porcion, alergenos, edulcorantes) {
+            const factor = 100 / porcion;
+            
+            // Buscar macros para energía
+            const prot = datos.find(d => d.nombre.toLowerCase().includes('proteína') || d.nombre.toLowerCase().includes('proteina'))?.valor || 0;
+            const carb = datos.find(d => d.nombre.toLowerCase().includes('carbohidrato') && !d.nombre.toLowerCase().includes('azúcar'))?.valor || 0;
+            const gras = datos.find(d => d.nombre.toLowerCase().includes('grasa') && d.nombre.toLowerCase().includes('total'))?.valor || 0;
+            
+            const kcal = (prot * 4) + (carb * 4) + (gras * 9);
+            const kj = kcal * 4.184;
+            
+            document.getElementById('energyFormula').innerHTML = `
+                <strong>NOM-051:</strong> Proteínas × 4 kcal/g + Carbohidratos × 4 kcal/g + Grasas × 9 kcal/g<br>
+                = (${prot} × 4) + (${carb} × 4) + (${gras} × 9) = <strong>${kcal.toFixed(1)} kcal</strong> | <strong>${kj.toFixed(1)} kJ</strong>
+            `;
+            
+            // Generar tabla
+            const tbody = document.getElementById('tbodyResultados');
+            tbody.innerHTML = '';
+            
+            let prohibidos = [], excedidos = [], advertencias = [], leyendas = [];
+            
+            // Energía primero
+            tbody.innerHTML += `<tr style="background:rgba(0,217,255,0.1);">
+                <td><strong>Contenido Energético</strong></td>
+                <td>${kj.toFixed(1)} kJ (${kcal.toFixed(1)} kcal)</td>
+                <td>${(kj*factor).toFixed(1)} kJ (${(kcal*factor).toFixed(1)} kcal)</td>
+                <td>-</td>
+                <td><span class="alert alert-ok">✓ Calculado</span></td>
+            </tr>`;
+            
+            // Procesar datos
+            datos.forEach(item => {
+                const n = item.nombre.toLowerCase();
+                const val100 = item.valor * factor;
+                
+                // Validar prohibido
+                if (plantasProhibidas.some(p => n.includes(p))) {
+                    prohibidos.push(`🚫 <strong>${item.nombre}</strong> - Planta prohibida COFEPRIS/Amazon`);
+                    return;
+                }
+                
+                // Validar embarazo
+                if (plantasEmbarazo.some(p => n.includes(p))) {
+                    advertencias.push(`⚠️ <strong>${item.nombre}</strong> - Requiere leyenda: "ATENCIÓN: NO CONSUMIRSE DURANTE EL EMBARAZO"`);
+                }
+                
+                // Buscar límite y VNR
+                let vnrPct = '-';
+                let estado = '<span class="alert alert-ok">✓</span>';
+                
+                for (let key in limitesAmazon) {
+                    if (n.includes(key)) {
+                        const ref = limitesAmazon[key];
+                        if (item.valor > ref.limite) {
+                            estado = `<span class="alert alert-danger">❌ Excede ${ref.limite}</span>`;
+                            excedidos.push(`❌ <strong>${item.nombre}</strong>: ${item.valor} ${item.unidad} excede límite Amazon (${ref.limite} ${ref.unidad})`);
+                        }
+                        if (ref.vnr && item.valor > 0) {
+                            vnrPct = ((item.valor / ref.vnr) * 100).toFixed(0) + '%';
+                        }
+                        break;
+                    }
+                }
+                
+                // Formatear valor
+                let val100Str = val100.toFixed(2);
+                let unidad100 = item.unidad;
+                if (item.unidad === 'mg' && val100 >= 1000) {
+                    val100Str = (val100 / 1000).toFixed(2);
+                    unidad100 = 'g';
+                }
+                
+                const indent = item.sub ? 'padding-left: 30px; color: #aaa;' : '';
+                
+                tbody.innerHTML += `<tr>
+                    <td style="${indent}">${item.nombre}</td>
+                    <td>${item.valor} ${item.unidad}</td>
+                    <td>${val100Str} ${unidad100}</td>
+                    <td style="color:#888;">${vnrPct}</td>
+                    <td>${estado}</td>
+                </tr>`;
+            });
+            
+            // Validaciones
+            let htmlProhibidos = '';
+            if (prohibidos.length > 0) {
+                htmlProhibidos = `<div class="validation-box validation-prohibited">
+                    <h3 style="color:#ff0000;">🚫 INGREDIENTES PROHIBIDOS - NO PROCEDE</h3>
+                    <ul>${prohibidos.map(p => `<li>${p}</li>`).join('')}</ul>
+                </div>`;
+            }
+            document.getElementById('validacionesProhibidos').innerHTML = htmlProhibidos;
+            
+            let htmlExcedidos = '';
+            if (excedidos.length > 0) {
+                htmlExcedidos = `<div class="validation-box validation-error">
+                    <h3 style="color:#ff4757;">❌ LÍMITES AMAZON EXCEDIDOS</h3>
+                    <ul>${excedidos.map(e => `<li>${e}</li>`).join('')}</ul>
+                </div>`;
+            } else if (prohibidos.length === 0) {
+                htmlExcedidos = `<div class="validation-box validation-ok">
+                    <h3 style="color:#00ff88;">✅ Límites Amazon: APROBADO</h3>
+                </div>`;
+            }
+            document.getElementById('validacionesLimites').innerHTML = htmlExcedidos;
+            
+            // Leyendas requeridas
+            let htmlLeyendas = '<div class="leyendas-box"><h3>📝 LEYENDAS REQUERIDAS EN ETIQUETA</h3>';
+            let hayLeyendas = false;
+            
+            // Alérgenos
+            const alergenosActivos = [];
+            if (alergenos.leche) alergenosActivos.push('LECHE');
+            if (alergenos.huevo) alergenosActivos.push('HUEVO');
+            if (alergenos.pescado) alergenosActivos.push('PESCADO');
+            if (alergenos.crustaceos) alergenosActivos.push('CRUSTÁCEOS');
+            if (alergenos.moluscos) alergenosActivos.push('MOLUSCOS');
+            if (alergenos.soya) alergenosActivos.push('SOYA');
+            if (alergenos.trigo) alergenosActivos.push('TRIGO (GLUTEN)');
+            if (alergenos.cacahuate) alergenosActivos.push('CACAHUATE');
+            if (alergenos.nueces) alergenosActivos.push('NUECES DE ÁRBOL');
+            if (alergenos.sulfitos) alergenosActivos.push('SULFITOS');
+            
+            if (alergenosActivos.length > 0) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>ALÉRGENOS (NOM-051):</strong><br>"Contiene: ${alergenosActivos.join(', ')}"</div>`;
+            }
+            
+            // Edulcorantes
+            if (edulcorantes.stevia) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>STEVIA:</strong><br>"Contiene glucósidos de esteviol equivalentes a X mg de equivalentes de esteviol por porción"</div>`;
+            }
+            if (edulcorantes.sucralosa) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>SUCRALOSA:</strong><br>"Contiene sucralosa X mg por porción"</div>`;
+            }
+            if (edulcorantes.aspartame) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>ASPARTAME:</strong><br>"Contiene aspartame (fuente de fenilalanina)" - FENILCETONÚRICOS: CONTIENE FENILALANINA</div>`;
+            }
+            if (edulcorantes.acesulfame) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>ACESULFAME K:</strong><br>"Contiene acesulfame de potasio"</div>`;
+            }
+            if (edulcorantes.sacarina) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>SACARINA:</strong><br>"Contiene sacarina"</div>`;
+            }
+            if (edulcorantes.polialcoholes) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>POLIALCOHOLES:</strong><br>"El consumo excesivo puede causar efectos laxantes"</div>`;
+            }
+            
+            // Plantas embarazo
+            if (advertencias.length > 0) {
+                hayLeyendas = true;
+                htmlLeyendas += `<div class="leyenda-item"><strong>PLANTAS RESTRINGIDAS:</strong><br>"ATENCIÓN: NO CONSUMIRSE DURANTE EL EMBARAZO"</div>`;
+            }
+            
+            if (!hayLeyendas) {
+                htmlLeyendas += '<div class="leyenda-item">No se requieren leyendas adicionales basadas en la información proporcionada.</div>';
+            }
+            
+            htmlLeyendas += '</div>';
+            document.getElementById('leyendasRequeridas').innerHTML = htmlLeyendas;
+            
+            // Mostrar resultados
+            document.getElementById('resultados').classList.add('visible');
+            document.getElementById('resultados').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function copiarTabla() {
+            const table = document.getElementById('tablaResultados');
+            let text = '';
+            for (let row of table.rows) {
+                text += Array.from(row.cells).map(c => c.innerText.replace(/\s+/g, ' ').trim()).join('\t') + '\n';
+            }
+            navigator.clipboard.writeText(text).then(() => alert('✅ Tabla copiada'));
+        }
+    </script>
+</body>
+</html>
