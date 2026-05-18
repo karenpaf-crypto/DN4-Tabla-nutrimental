@@ -199,8 +199,8 @@
             <div class="card" id="uploadConfigCard" style="display: none;">
                 <h2>⚙️ Configuración</h2>
                 <div class="form-row">
-                    <div class="form-group"><label>Porción (g)</label><input type="number" id="porcionUpload" value="15" step="0.1"></div>
-                    <div class="form-group"><label>Porciones/envase</label><input type="number" id="porcionesUpload" value="30"></div>
+                    <div class="form-group"><label>Porción (g)</label><input type="number" id="porcionUpload" placeholder="Se detecta del documento" step="0.1"></div>
+                    <div class="form-group"><label>Porciones/envase</label><input type="number" id="porcionesUpload" placeholder="Se detecta del documento"></div>
                 </div>
             </div>
             
@@ -231,8 +231,8 @@
             <div class="card">
                 <h2>⚙️ Configuración</h2>
                 <div class="form-row">
-                    <div class="form-group"><label>Porción (g)</label><input type="number" id="porcionPaste" value="15" step="0.1"></div>
-                    <div class="form-group"><label>Porciones/envase</label><input type="number" id="porcionesPaste" value="30"></div>
+                    <div class="form-group"><label>Porción (g)</label><input type="number" id="porcionPaste" placeholder="Se detecta del texto" step="0.1"></div>
+                    <div class="form-group"><label>Porciones/envase</label><input type="number" id="porcionesPaste" placeholder="Se detecta del texto"></div>
                 </div>
             </div>
             
@@ -250,8 +250,8 @@
             <div class="card">
                 <h2>⚙️ Configuración</h2>
                 <div class="form-row">
-                    <div class="form-group"><label>Porción (g)</label><input type="number" id="porcion" value="15" step="0.1"></div>
-                    <div class="form-group"><label>Porciones/envase</label><input type="number" id="porciones" value="30"></div>
+                    <div class="form-group"><label>Porción (g)</label><input type="number" id="porcion" placeholder="Ej: 15" step="0.1"></div>
+                    <div class="form-group"><label>Porciones/envase</label><input type="number" id="porciones" placeholder="Ej: 30"></div>
                 </div>
             </div>
             
@@ -360,6 +360,7 @@
             </table>
             
             <div id="validacionOrden"></div>
+            <div id="validacionIngredientes"></div>
             <div id="validacionesProhibidos"></div>
             <div id="validacionesLimites"></div>
             <div id="leyendasRequeridas"></div>
@@ -483,26 +484,85 @@
             parseTable(texto, 'texto pegado', 'paste');
         }
         
+        // Lista de excipientes y no funcionales que NO necesitan declararse en tabla
+        const excipientesNoFuncionales = [
+            'ácido cítrico', 'acido citrico', 'ácido málico', 'acido malico', 'ácido tartárico',
+            'sabor', 'saborizante', 'aroma', 'esencia',
+            'celulosa', 'celulosa microcristalina', 'carboximetilcelulosa',
+            'dióxido de silicio', 'dioxido de silicio', 'sílice', 'silice',
+            'estearato de magnesio', 'estearato',
+            'sucralosa', 'stevia', 'glucósidos de esteviol', 'aspartame', 'acesulfame',
+            'colorante', 'color', 'dióxido de titanio',
+            'maltodextrina', 'almidón', 'almidon',
+            'gelatina', 'cápsula', 'capsula', 'recubrimiento',
+            'agua', 'agua purificada',
+            'glicerina', 'glicerol', 'propilenglicol',
+            'lecitina', 'lecitina de soya', 'lecitina de girasol',
+            'goma', 'goma xantana', 'goma guar', 'goma arábiga',
+            'cera', 'cera de abeja', 'cera carnauba',
+            'alcohol', 'etanol',
+            'conservador', 'sorbato', 'benzoato',
+            'antiaglomerante', 'antihumectante', 'humectante',
+            'emulsificante', 'emulsionante',
+            'espesante', 'estabilizante', 'gelificante'
+        ];
+        
+        let listaIngredientesExtraida = [];
+        let ingredientesEnTabla = [];
+        
         function parseTable(text, source, mode) {
             const datos = [];
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
             
+            // Detectar tamaño de porción y porciones por envase
+            let porcionDetectada = null;
+            let porcionesEnvaseDetectadas = null;
+            listaIngredientesExtraida = [];
+            
             for (let line of lines) {
-                // Buscar patrón: Nombre + número + unidad
+                const lineaLower = line.toLowerCase();
+                
+                // Buscar tamaño de porción
+                if (lineaLower.includes('porción') || lineaLower.includes('porcion') || lineaLower.includes('tamaño')) {
+                    const matchPorcion = line.match(/(\d+(?:[.,]\d+)?)\s*g/i);
+                    if (matchPorcion) {
+                        porcionDetectada = parseFloat(matchPorcion[1].replace(',', '.'));
+                    }
+                }
+                
+                // Buscar porciones por envase
+                if (lineaLower.includes('porciones por envase') || lineaLower.includes('porciones:')) {
+                    const matchPorciones = line.match(/(\d+)/);
+                    if (matchPorciones) {
+                        porcionesEnvaseDetectadas = parseInt(matchPorciones[1]);
+                    }
+                }
+                
+                // Extraer lista de ingredientes
+                if (lineaLower.startsWith('ingredientes:') || lineaLower.startsWith('ingredientes :')) {
+                    const listaTexto = line.replace(/^ingredientes\s*:\s*/i, '');
+                    // Separar por comas, puntos o "y"
+                    const ingredientes = listaTexto.split(/,|(?:\sy\s)/).map(i => i.trim().replace(/\.$/, ''));
+                    listaIngredientesExtraida = ingredientes.filter(i => i.length > 2);
+                }
+            }
+            
+            // Procesar datos nutricionales (tabla)
+            ingredientesEnTabla = [];
+            for (let line of lines) {
                 const match = line.match(/^([A-Za-zÁÉÍÓÚáéíóúñÑ\s\(\)\-\+:,\.0-9]+?)\s+([\d,.]+)\s*(mg|g|mcg|µg|kcal|kJ|%)?/i);
                 if (match) {
                     let nombre = match[1].trim().replace(/[:]+$/, '').replace(/\s+/g, ' ');
                     let valor = parseFloat(match[2].replace(',', '.'));
                     let unidad = (match[3] || 'g').toLowerCase().replace('mcg', 'µg');
                     
-                    // Filtrar líneas no relevantes
-                    const ignorar = ['tamaño', 'porción', 'porciones', 'envase', 'por 100', 'código', 'codigo', 'upc', 'fecha'];
+                    const ignorar = ['tamaño', 'porción', 'porcion', 'porciones', 'envase', 'por 100', 'código', 'codigo', 'upc', 'fecha', 'etiqueta', 'interno'];
                     if (ignorar.some(i => nombre.toLowerCase().includes(i))) continue;
                     if (isNaN(valor) || nombre.length < 3) continue;
                     
-                    // Detectar si ya existe
                     if (!datos.some(d => d.nombre.toLowerCase() === nombre.toLowerCase())) {
                         datos.push({ nombre, valor, unidad });
+                        ingredientesEnTabla.push(nombre.toLowerCase());
                     }
                 }
             }
@@ -516,6 +576,14 @@
                     document.getElementById('uploadConfigCard').style.display = 'block';
                     document.getElementById('previewCard').style.display = 'block';
                     document.getElementById('calcularBtnUpload').style.display = 'block';
+                    
+                    if (porcionDetectada) {
+                        document.getElementById('porcionUpload').value = porcionDetectada;
+                    }
+                    if (porcionesEnvaseDetectadas) {
+                        document.getElementById('porcionesUpload').value = porcionesEnvaseDetectadas;
+                    }
+                    
                     mostrarPreview(datos, 'ingredientesPreview');
                 } else {
                     document.getElementById('fileStatus').innerHTML = '<div class="file-name file-warning">⚠️ No se encontraron datos numéricos</div>';
@@ -525,6 +593,15 @@
                 if (datos.length > 0) {
                     document.getElementById('previewCardPaste').style.display = 'block';
                     document.getElementById('calcularBtnPaste').style.display = 'block';
+                    
+                    // Actualizar campos de porción si se detectaron
+                    if (porcionDetectada) {
+                        document.getElementById('porcionPaste').value = porcionDetectada;
+                    }
+                    if (porcionesEnvaseDetectadas) {
+                        document.getElementById('porcionesPaste').value = porcionesEnvaseDetectadas;
+                    }
+                    
                     mostrarPreview(datos, 'ingredientesPreviewPaste');
                 } else {
                     alert('No se encontraron datos numéricos en el texto');
@@ -578,25 +655,40 @@
         window.onload = () => { for(let i=0;i<5;i++) agregarIngrediente(); };
         
         function calcularDesdeArchivo() {
+            const porcion = parseFloat(document.getElementById('porcionUpload').value);
+            if (!porcion || porcion <= 0) {
+                alert('⚠️ Ingresa el tamaño de porción (g)');
+                document.getElementById('porcionUpload').focus();
+                return;
+            }
             datosExtraidos.forEach((item, idx) => {
                 item.valor = parseFloat(document.getElementById(`ingredientesPreview_val_${idx}`)?.value) || item.valor;
                 item.unidad = document.getElementById(`ingredientesPreview_uni_${idx}`)?.value || item.unidad;
             });
-            const porcion = parseFloat(document.getElementById('porcionUpload').value) || 15;
             generarResultados(datosExtraidos, porcion, {}, {});
         }
         
         function calcularDesdePaste() {
+            const porcion = parseFloat(document.getElementById('porcionPaste').value);
+            if (!porcion || porcion <= 0) {
+                alert('⚠️ Ingresa el tamaño de porción (g)');
+                document.getElementById('porcionPaste').focus();
+                return;
+            }
             datosExtPaste.forEach((item, idx) => {
                 item.valor = parseFloat(document.getElementById(`ingredientesPreviewPaste_val_${idx}`)?.value) || item.valor;
                 item.unidad = document.getElementById(`ingredientesPreviewPaste_uni_${idx}`)?.value || item.unidad;
             });
-            const porcion = parseFloat(document.getElementById('porcionPaste').value) || 15;
             generarResultados(datosExtPaste, porcion, {}, {});
         }
         
         function calcularManual() {
-            const porcion = parseFloat(document.getElementById('porcion').value) || 15;
+            const porcion = parseFloat(document.getElementById('porcion').value);
+            if (!porcion || porcion <= 0) {
+                alert('⚠️ Ingresa el tamaño de porción (g)');
+                document.getElementById('porcion').focus();
+                return;
+            }
             const datos = [];
             
             // Orden NOM-051 4.2.8.2.1
@@ -795,6 +887,9 @@
                     <div class="validation-box validation-ok"><h3>✅ Límites Amazon: OK</h3></div>`;
             }
             
+            // Validación: Ingredientes funcionales vs Tabla Nutrimental
+            validarIngredientesVsTabla();
+            
             // Leyendas
             let leyendas = [];
             
@@ -845,6 +940,78 @@
                 text += Array.from(row.cells).map(c => c.innerText.trim()).join('\t') + '\n';
             }
             navigator.clipboard.writeText(text).then(() => alert('✅ Tabla copiada'));
+        }
+        
+        function esExcipiente(ingrediente) {
+            const ing = ingrediente.toLowerCase();
+            return excipientesNoFuncionales.some(exc => ing.includes(exc));
+        }
+        
+        function estaEnTabla(ingrediente) {
+            const ing = ingrediente.toLowerCase();
+            // Buscar coincidencia parcial en la tabla
+            return ingredientesEnTabla.some(tablaItem => {
+                // Extraer palabras clave del ingrediente
+                const palabrasClave = ing.split(/[\s\-\(\):,]+/).filter(p => p.length > 3);
+                return palabrasClave.some(palabra => tablaItem.includes(palabra));
+            });
+        }
+        
+        function validarIngredientesVsTabla() {
+            const container = document.getElementById('validacionIngredientes');
+            if (!container) return;
+            
+            if (listaIngredientesExtraida.length === 0) {
+                container.innerHTML = `
+                    <div class="validation-box" style="background:rgba(100,100,100,0.1);border:1px solid #666;">
+                        <h3 style="color:#888;">ℹ️ Lista de Ingredientes</h3>
+                        <p style="font-size:0.85rem;color:#888;">No se detectó lista de ingredientes en el documento. Verifica manualmente.</p>
+                    </div>`;
+                return;
+            }
+            
+            const faltantes = [];
+            const correctos = [];
+            const excipientes = [];
+            
+            listaIngredientesExtraida.forEach(ing => {
+                if (esExcipiente(ing)) {
+                    excipientes.push(ing);
+                } else if (estaEnTabla(ing)) {
+                    correctos.push(ing);
+                } else {
+                    faltantes.push(ing);
+                }
+            });
+            
+            let html = '';
+            
+            if (faltantes.length > 0) {
+                html += `
+                    <div class="validation-box validation-error">
+                        <h3>❌ INGREDIENTES FUNCIONALES FALTANTES EN TABLA</h3>
+                        <p style="font-size:0.8rem;color:#ff9999;margin-bottom:8px;">Estos ingredientes están en la lista pero NO aparecen en la tabla nutrimental:</p>
+                        <ul>${faltantes.map(f => `<li><strong>${f}</strong></li>`).join('')}</ul>
+                    </div>`;
+            }
+            
+            if (correctos.length > 0) {
+                html += `
+                    <div class="validation-box validation-ok">
+                        <h3>✅ Ingredientes Funcionales Declarados (${correctos.length})</h3>
+                        <p style="font-size:0.85rem;">${correctos.join(', ')}</p>
+                    </div>`;
+            }
+            
+            if (excipientes.length > 0) {
+                html += `
+                    <div class="validation-box" style="background:rgba(100,100,100,0.1);border:1px solid #666;">
+                        <h3 style="color:#888;">📋 Excipientes/No Funcionales (no requieren tabla)</h3>
+                        <p style="font-size:0.85rem;color:#888;">${excipientes.join(', ')}</p>
+                    </div>`;
+            }
+            
+            container.innerHTML = html;
         }
     </script>
 </body>
