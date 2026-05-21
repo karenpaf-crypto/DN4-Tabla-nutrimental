@@ -507,6 +507,48 @@
             'espesante', 'estabilizante', 'gelificante'
         ];
         
+        // Palabras clave que indican que NO es un nutriente
+        const noEsNutriente = [
+            'código', 'codigo', 'upc', 'etiqueta', 'interno', 'fecha',
+            'masaryk', 'calle', 'avenida', 'colonia', 'cdmx', 'méxico', 'mexico',
+            'c.p.', 'cp', 'tel', 'teléfono', 'telefono', 'fax', 'email',
+            'hecho en', 'fabricado', 'distribuido', 'importado',
+            'lote', 'caducidad', 'consumir', 'preferente',
+            'contenido neto', 'neto:', 'net', 'peso',
+            'modo de empleo', 'precauciones', 'advertencia', 'conserve',
+            'suplemento alimenticio', 'polvo', 'cápsula', 'tableta',
+            'medicamento', 'responsabilidad', 'recomienda',
+            'barniz', 'recuadro', 'reserva', 'empaque',
+            's.a.p.i', 'sapi', 's.a. de c.v', 'sa de cv', 'brands',
+            'int.', 'interior', 'piso', 'sección', 'seccion', 'polanco',
+            'miguel hidalgo', 'alcaldía', 'alcaldia', 'delegación'
+        ];
+        
+        // Nutrientes válidos que SÍ debemos capturar
+        const nutrientesValidos = [
+            'energético', 'energetico', 'kcal', 'kj', 'calorías', 'calorias', 'energía', 'energia',
+            'proteína', 'proteina', 'proteínas', 'proteinas',
+            'carbohidrato', 'carbohidratos', 'hidratos',
+            'azúcar', 'azucar', 'azúcares', 'azucares',
+            'grasa', 'grasas', 'lípido', 'lipido', 'lípidos', 'lipidos',
+            'saturada', 'saturadas', 'monoinsaturada', 'poliinsaturada', 'trans',
+            'colesterol',
+            'fibra', 'dietética', 'dietetica',
+            'sodio', 'sal',
+            'vitamina', 'vit.', 'vit ',
+            'calcio', 'hierro', 'zinc', 'magnesio', 'potasio', 'fósforo', 'fosforo',
+            'selenio', 'cobre', 'manganeso', 'cromo', 'yodo', 'flúor', 'fluor',
+            'citrulina', 'creatina', 'beta-alanina', 'betaalanina', 'alanina',
+            'tirosina', 'l-tirosina', 'taurina', 'arginina', 'glutamina', 'bcaa',
+            'cafeína', 'cafeina', 'teína', 'teina',
+            'maca', 'tongkat', 'ashwagandha', 'ginseng', 'tribulus', 'fenogreco',
+            'shilajit', 'piperina', 'bioperine',
+            'colágeno', 'colageno', 'biotina', 'queratina',
+            'probiótico', 'probiotico', 'lactobacillus', 'bifidobacterium',
+            'omega', 'dha', 'epa', 'aceite de pescado',
+            'extracto', 'ext.', 'ext '
+        ];
+        
         let listaIngredientesExtraida = [];
         let ingredientesEnTabla = [];
         
@@ -514,24 +556,38 @@
             const datos = [];
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
             
-            // Detectar tamaño de porción y porciones por envase
             let porcionDetectada = null;
             let porcionesEnvaseDetectadas = null;
             listaIngredientesExtraida = [];
+            ingredientesEnTabla = [];
             
-            for (let line of lines) {
+            let dentroDeTabla = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
                 const lineaLower = line.toLowerCase();
                 
+                // Detectar inicio de tabla nutrimental
+                if (lineaLower.includes('información nutrimental') || lineaLower.includes('informacion nutrimental') || lineaLower.includes('nutrition facts')) {
+                    dentroDeTabla = true;
+                    continue;
+                }
+                
+                // Detectar fin de tabla (cuando empieza otra sección)
+                if (dentroDeTabla && (lineaLower.startsWith('suplemento alimenticio') || lineaLower.startsWith('modo de empleo') || lineaLower.startsWith('precauciones') || lineaLower.startsWith('ingredientes:'))) {
+                    dentroDeTabla = false;
+                }
+                
                 // Buscar tamaño de porción
-                if (lineaLower.includes('porción') || lineaLower.includes('porcion') || lineaLower.includes('tamaño')) {
-                    const matchPorcion = line.match(/(\d+(?:[.,]\d+)?)\s*g/i);
+                if (lineaLower.includes('porción') || lineaLower.includes('porcion')) {
+                    const matchPorcion = line.match(/(\d+(?:[.,]\d+)?)\s*g(?:\s|$)/i);
                     if (matchPorcion) {
                         porcionDetectada = parseFloat(matchPorcion[1].replace(',', '.'));
                     }
                 }
                 
                 // Buscar porciones por envase
-                if (lineaLower.includes('porciones por envase') || lineaLower.includes('porciones:')) {
+                if (lineaLower.includes('porciones por envase') || (lineaLower.includes('porciones') && lineaLower.includes('envase'))) {
                     const matchPorciones = line.match(/(\d+)/);
                     if (matchPorciones) {
                         porcionesEnvaseDetectadas = parseInt(matchPorciones[1]);
@@ -541,28 +597,48 @@
                 // Extraer lista de ingredientes
                 if (lineaLower.startsWith('ingredientes:') || lineaLower.startsWith('ingredientes :')) {
                     const listaTexto = line.replace(/^ingredientes\s*:\s*/i, '');
-                    // Separar por comas, puntos o "y"
-                    const ingredientes = listaTexto.split(/,|(?:\sy\s)/).map(i => i.trim().replace(/\.$/, ''));
+                    const ingredientes = listaTexto.split(/,(?![^()]*\))/).map(i => i.trim().replace(/\.$/, '').replace(/\s+y\s+/g, ', '));
                     listaIngredientesExtraida = ingredientes.filter(i => i.length > 2);
                 }
-            }
-            
-            // Procesar datos nutricionales (tabla)
-            ingredientesEnTabla = [];
-            for (let line of lines) {
-                const match = line.match(/^([A-Za-zÁÉÍÓÚáéíóúñÑ\s\(\)\-\+:,\.0-9]+?)\s+([\d,.]+)\s*(mg|g|mcg|µg|kcal|kJ|%)?/i);
-                if (match) {
-                    let nombre = match[1].trim().replace(/[:]+$/, '').replace(/\s+/g, ' ');
-                    let valor = parseFloat(match[2].replace(',', '.'));
-                    let unidad = (match[3] || 'g').toLowerCase().replace('mcg', 'µg');
+                
+                // Solo procesar líneas si estamos dentro de la tabla o si parece un nutriente válido
+                if (dentroDeTabla || nutrientesValidos.some(nv => lineaLower.includes(nv))) {
                     
-                    const ignorar = ['tamaño', 'porción', 'porcion', 'porciones', 'envase', 'por 100', 'código', 'codigo', 'upc', 'fecha', 'etiqueta', 'interno'];
-                    if (ignorar.some(i => nombre.toLowerCase().includes(i))) continue;
-                    if (isNaN(valor) || nombre.length < 3) continue;
+                    // Verificar que NO sea una línea que debemos ignorar
+                    if (noEsNutriente.some(ne => lineaLower.includes(ne))) {
+                        continue;
+                    }
                     
-                    if (!datos.some(d => d.nombre.toLowerCase() === nombre.toLowerCase())) {
-                        datos.push({ nombre, valor, unidad });
-                        ingredientesEnTabla.push(nombre.toLowerCase());
+                    // Buscar patrón: Nombre seguido de valor con unidad
+                    // Formato típico: "Proteínas    2.78 g    18.55 g" o "L-Citrulina Malato 2:1   6 g   40 g"
+                    const match = line.match(/^(.+?)\s+([\d,.]+)\s*(mg|g|mcg|µg|kcal|kJ|%|UI|IU)(?:\s|$)/i);
+                    
+                    if (match) {
+                        let nombre = match[1].trim().replace(/[:]+$/, '').replace(/\s+/g, ' ');
+                        let valor = parseFloat(match[2].replace(',', '.'));
+                        let unidad = (match[3] || 'g').toLowerCase().replace('mcg', 'µg');
+                        
+                        // Limpiar nombre
+                        nombre = nombre.replace(/^\s*[-•]\s*/, ''); // Quitar viñetas
+                        
+                        // Verificar que el nombre tenga sentido como nutriente
+                        const nombreLower = nombre.toLowerCase();
+                        
+                        // Ignorar si parece código, dirección, etc.
+                        if (noEsNutriente.some(ne => nombreLower.includes(ne))) continue;
+                        if (/^\d+$/.test(nombre)) continue; // Solo números
+                        if (nombre.length < 2 || nombre.length > 80) continue;
+                        if (isNaN(valor)) continue;
+                        
+                        // Solo agregar si parece un nutriente válido O estamos dentro de la tabla
+                        const esNutrienteValido = nutrientesValidos.some(nv => nombreLower.includes(nv));
+                        
+                        if (dentroDeTabla || esNutrienteValido) {
+                            if (!datos.some(d => d.nombre.toLowerCase() === nombreLower)) {
+                                datos.push({ nombre, valor, unidad });
+                                ingredientesEnTabla.push(nombreLower);
+                            }
+                        }
                     }
                 }
             }
@@ -572,7 +648,7 @@
                 if (datos.length > 0) {
                     uploadZone.classList.remove('error');
                     uploadZone.classList.add('loaded');
-                    document.getElementById('fileStatus').innerHTML = `<div class="file-name file-ok">✅ ${source} - ${datos.length} items</div>`;
+                    document.getElementById('fileStatus').innerHTML = `<div class="file-name file-ok">✅ ${source} - ${datos.length} nutrientes detectados</div>`;
                     document.getElementById('uploadConfigCard').style.display = 'block';
                     document.getElementById('previewCard').style.display = 'block';
                     document.getElementById('calcularBtnUpload').style.display = 'block';
